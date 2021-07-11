@@ -1,0 +1,186 @@
+<body>
+
+
+  <!--Navbar-->
+
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark" id="nav">
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#codechainnavbar"
+      aria-controls="codechainnavbar" aria-expanded="false" aria-label="Toggle Navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <a class="navbar-brand" href="#">CODECHAIN</a>
+
+    <div class="collapse navbar-collapse" id="codechainnavbar">
+      <ul class="navbar-nav mr-auto mt-2 mt-lg-0">
+        <li class="nav-item">
+          <a class="nav-link" href="#">WORKSPACE</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#">ABOUT</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#">CONTACT</a>
+        </li>
+      </ul>
+    </div>
+    <div>
+      <ul class="nav navbar-nav navbar-right">
+        <li class="dropdown">
+          <a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-expanded="false" aria-haspopup="true"
+            role="button"> <%= name %><span class="caret"></span></a>
+          <ul class="dropdown-menu">
+            <li><a href="#">Save for later use</a></li>
+            <li><a href="/users/logout">Logout</a></li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+
+  <!--Code-Area-->
+
+  <div class="row">
+  <div class="col-lg-8 col-md-8 col-sm-12" id="workspace">
+        <button class="btn btn-default" id="done">Done</button>
+            <textarea id="codearea"></textarea>
+
+  </div>
+  <!--chatbox-->
+  
+  <div class="col-lg-4 col-md-4"  id="chatbox">
+    <div class="chat-container">
+       <header class="chat-header">
+         <h3>CHATBOX</h3>
+        </header>
+          <main class="chat-content">
+           <div class="chat-message" id="chatroom">
+            </div>
+          </main>
+        <div class="chat-footer">
+           <form id="chat-form">
+            <input id="msg" type="text" placeholder="Enter Message" required  autocomplete="off"/>
+            <button id="send-btn" type="button" class="btn btn-secondary btn-lg">
+               Send
+            </button>
+           </form>
+          </div>
+      </div>
+    </div>
+
+
+ </div>
+   
+
+
+
+  <!--Scripting tags-->
+  <script type="text/javascript" src="http://code.jquery.com/jquery-1.7.1.min.js"></script>
+  <script type="text/javascript"
+    src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/codemirror.min.js"> </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.25.0/mode/javascript/javascript.min.js"></script>
+  <script src="/plugins/ot/ot.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+
+    /*const editor1 = CodeMirror.fromTextArea
+      (document.getElementById('notes_textarea'), {
+        mode: 'xml',
+        theme: 'dracula',
+        lineNumbers: true,
+        autoCloseTags: true
+      });
+    editor1.setSize('100%', '100%');*/
+    
+    let msg=$('#msg');
+    let chatdiv=$('#chat-form');
+    let sendbtn=$('#send-btn');
+    let msglist=$('#msg_list');
+    let chatroom=$('#chatroom');
+    var uid = uid();
+    var codearea = $('#codearea');
+    var done = $('#done');
+
+    user='';
+    var socket = io.connect();
+
+    sendbtn.click(function()
+    {
+        let data=msg.val();
+       
+        socket.emit('send',{user:user,message:data,soc:socket.id});
+    })
+
+    socket.on('rcv',(data)=>
+    {
+        
+        if(data.soc==socket.id)
+        { 
+          chatroom.append($('<div class="card bg-primary rounded w-75 z-depth-0 float-right  mb-1 message-text"><div class="card-body p-2"><p class="card-text black-text">' +data.message + '</p></div></div>'));
+        }
+        else
+        {
+            chatroom.append($('<div class="card bg-dark rounded w-75 z-depth-0 mb-1 message-text"><div class="card-body p-2"><p class="card-text black-text">' +data.message + '</p></div></div>'))
+        }  
+        
+    })
+
+    done.prop("disabled", true);
+    socket.on('startup', function (data) {
+
+      codearea.val(data.content);
+
+      if (data.code == 1) {
+        codearea.prop("disabled", true);
+      } else {
+        codearea.prop("disabled", false);
+      }
+    });
+
+    codearea.click(function () {
+      done.prop("disabled", false);
+      socket.emit('code', uid);
+    });
+
+    done.click(function () {
+      socket.emit("release");
+      done.prop("disabled", true);
+    });
+
+    codearea.keyup(function () {
+      socket.emit("codeContent", { content: $(this).val(), uid: uid });
+    });
+
+    socket.on('code', function (remote_uid) {
+      if (remote_uid != uid) {
+        codearea.prop("disabled", true);
+      }
+    });
+
+    socket.on('codeContent', function (data) {
+      if (data.uid != uid) {
+        codearea.val(data.content);
+      }
+    });
+
+    socket.on('release', function () {
+      codearea.prop("disabled", false);
+    });
+
+    window.onbeforeunload = function () {
+      //before leaving if you are writing or nobody else is writing free notes
+      if (codearea.prop("disabled") == false)
+        socket.emit("release");
+    };
+
+    function uid() {
+      function s4() {
+        return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+      }
+
+      return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
+    }
+  </script>
+</body>
+
+</html>
